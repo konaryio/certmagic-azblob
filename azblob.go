@@ -104,20 +104,29 @@ func (blob CaddyAzblob) CertMagicStorage() (certmagic.Storage, error) {
 }
 
 func (blob CaddyAzblob) Lock(ctx context.Context, key string) error {
-	blob.logger.Debug("Lock", zap.String("key", key))
+	blob.logger.Error("Lock", zap.String("key", key))
 	_, err := blob.ContainerURL.AcquireLease(context.TODO(), blob.UUID, -1, azblob.ModifiedAccessConditions{})
+	if err != nil {
+		blob.logger.Error("Lock", zap.String("err", err.Error()))
+	}
 	return err
 }
 
 func (blob CaddyAzblob) Unlock(ctx context.Context, key string) error {
-	blob.logger.Debug("Unlock", zap.String("key", key))
+	blob.logger.Error("Unlock", zap.String("key", key))
 	_, err := blob.ContainerURL.ReleaseLease(ctx, blob.UUID, azblob.ModifiedAccessConditions{})
+	if err != nil {
+		blob.logger.Error("Unlock", zap.String("err", err.Error()))
+	}
 	return err
 }
 
 func (blob CaddyAzblob) Store(ctx context.Context, key string, value []byte) error {
 	blobURL := blob.ContainerURL.NewBlockBlobURL(key)
 	_, err := blobURL.Upload(ctx, bytes.NewReader(value), azblob.BlobHTTPHeaders{ContentType: "text/plain"}, azblob.Metadata{}, azblob.BlobAccessConditions{}, azblob.DefaultAccessTier, nil, azblob.ClientProvidedKeyOptions{}, azblob.ImmutabilityPolicyOptions{})
+	if err != nil {
+		blob.logger.Error("Store", zap.String("err", err.Error()))
+	}
 	return err
 }
 
@@ -157,24 +166,26 @@ func (blob CaddyAzblob) Delete(ctx context.Context, key string) error {
 func (blob CaddyAzblob) Exists(ctx context.Context, key string) bool {
 	items, err := blob.List(ctx, key, true)
 	if err != nil {
+		blob.logger.Error("Exists", zap.String("err", err.Error()))
 		return false
 	}
 
 	for _, v := range items {
 		if strings.Contains(v, key) {
-			blob.logger.Debug("Exists", zap.Bool("exists", true), zap.String("key", key))
+			blob.logger.Error("Exists", zap.Bool("exists", true), zap.String("key", key))
 			return true
 		}
 	}
 
-	blob.logger.Debug("Exists", zap.Bool("exists", false), zap.String("key", key))
+	blob.logger.Error("Exists", zap.Bool("exists", false), zap.String("key", key))
 	return false
 }
 
 func (blob CaddyAzblob) List(ctx context.Context, prefix string, recursive bool) ([]string, error) {
-	blob.logger.Debug("List", zap.String("prefix", prefix))
+	blob.logger.Error("List", zap.String("prefix", prefix))
 	ls, err := blob.ContainerURL.ListBlobsFlatSegment(context.TODO(), azblob.Marker{}, azblob.ListBlobsSegmentOptions{})
 	if err != nil {
+		blob.logger.Error("List", zap.String("err", err.Error()))
 		return nil, err
 	}
 
@@ -183,20 +194,22 @@ func (blob CaddyAzblob) List(ctx context.Context, prefix string, recursive bool)
 		keys = append(keys, v.Name)
 	}
 
-	blob.logger.Debug("List Keys", zap.String("list", strings.Join(keys, ",")))
+	blob.logger.Error("List Keys", zap.String("list", strings.Join(keys, ",")))
 	return keys, nil
 }
 
 func (blob CaddyAzblob) Stat(ctx context.Context, key string) (certmagic.KeyInfo, error) {
-	blob.logger.Debug("Stat", zap.String("key", key))
+	blob.logger.Error("Stat", zap.String("key", key))
 	blobURL := blob.ContainerURL.NewBlockBlobURL(key)
 	resp, err := blobURL.GetProperties(ctx, azblob.BlobAccessConditions{}, azblob.ClientProvidedKeyOptions{})
 	if err != nil && !DoesBlobExists(err) {
+		blob.logger.Error("Stat", zap.String("err", err.Error()))
 		return certmagic.KeyInfo{}, err
 	}
 
 	data, err := blob.Load(ctx, key)
 	if err != nil {
+		blob.logger.Error("Stat 2", zap.String("err", err.Error()))
 		return certmagic.KeyInfo{}, err
 	}
 
