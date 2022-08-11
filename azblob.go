@@ -131,13 +131,14 @@ func (blob CaddyAzblob) Load(ctx context.Context, key string) ([]byte, error) {
 
 	if err != nil {
 		blob.logger.Error("Load", zap.String("err", err.Error()))
-		return nil, err
+		return nil, fs.ErrNotExist
 	}
 	downloadedData := &bytes.Buffer{}
 	reader := get.Body(azblob.RetryReaderOptions{})
 	_, err = downloadedData.ReadFrom(reader)
 	if err != nil {
 		blob.logger.Error("Load", zap.String("err", err.Error()))
+		return nil, err
 	}
 	return downloadedData.Bytes(), err
 	//return downloadedData.Bytes(), nil
