@@ -105,7 +105,8 @@ func (blob CaddyAzblob) CertMagicStorage() (certmagic.Storage, error) {
 
 func (blob CaddyAzblob) Lock(ctx context.Context, key string) error {
 	blob.logger.Info("Lock", zap.String("key", key))
-	_, err := blob.ContainerURL.AcquireLease(context.TODO(), blob.UUID, -1, azblob.ModifiedAccessConditions{})
+	blobURL := blob.ContainerURL.NewBlockBlobURL(key)
+	_, err := blobURL.AcquireLease(context.TODO(), blob.UUID, -1, azblob.ModifiedAccessConditions{})
 	if err != nil {
 		blob.logger.Error("Lock Error", zap.String("err", err.Error()))
 	}
@@ -114,7 +115,9 @@ func (blob CaddyAzblob) Lock(ctx context.Context, key string) error {
 
 func (blob CaddyAzblob) Unlock(ctx context.Context, key string) error {
 	blob.logger.Info("Unlock", zap.String("key", key))
-	_, err := blob.ContainerURL.ReleaseLease(ctx, blob.UUID, azblob.ModifiedAccessConditions{})
+	blobURL := blob.ContainerURL.NewBlockBlobURL(key)
+	_, err := blobURL.AcquireLease(context.TODO(), blob.UUID, -1, azblob.ModifiedAccessConditions{})
+	//_, err := blob.ContainerURL.ReleaseLease(ctx, blob.UUID, azblob.ModifiedAccessConditions{})
 	if err != nil {
 		blob.logger.Error("Unlock Error", zap.String("err", err.Error()))
 	}
